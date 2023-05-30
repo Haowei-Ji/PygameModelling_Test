@@ -1,11 +1,11 @@
-# **PyGame Modelling Workshop 2022**
+# **PyGame Modelling Workshop 2023**
 
-**Pyg**ame **Mod**elling **W**orkshop 20**22** (pygmodw22).
+**Pyg**ame **Mod**elling **W**orkshop 20**23** (pygmodw23).
 
-This is the offcicial repo of the pygame modelling course for collective systems workshop 2022 Berlin.
+This is the offcicial repo of the pygame modelling course for collective systems workshop 2023 Berlin.
 
 ## Welcome to the Workshop
-During this workshop you will learn about using a python-based game engine (pygame) for agent-based modelling and simulation tasks to model collective behavior.
+During this workshop you will learn about using a python-based game engine (pygame) for agent-based modelling and simulation tasks to model collective behavior and to collect analyze and visualize the resulting data.
 To use the provided code base you will need the following:
 
 ### 1. Prerequisites
@@ -20,7 +20,7 @@ To use the provided code base you will need the following:
 5. **Clone this repo:** Open the terminal and use the following command to clone the repo 
   
 ```bash
-git clone https://github.com/mezdahun/PygameModelling22.git
+git clone https://github.com/mezdahun/PygameModelling23.git
 ```
   
 6. **Create/activate new virtual environment**: We highly recommend using a virtual environment for the workshop so that you don't have version mismatches with other projects. We recommend using [venv](https://docs.python.org/3/library/venv.html) and we suppose you are using venv in the instructions. If you decide to use another virtual environment (such as pipenv or conda) or not to use any, some differences may show up during the installation.
@@ -28,7 +28,7 @@ git clone https://github.com/mezdahun/PygameModelling22.git
 On Linux/MacOS:
 ```bash
 # Move into the newly created/cloned directory
-cd PygameModelling22
+cd PygameModelling23
 
 # Create a new virtual environment in the folder venv
 # it can happen that you need to use python or python3.x instead of python3 according to
@@ -47,11 +47,12 @@ source ./venv/bin/activate
 On Windows:
 ```bash
 # Move into the newly created/cloned directory
-cd PygameModelling22
+cd PygameModelling23
 
 # Create a new virtual environment in the folder venv
 # it can happen that you need to use python or python3.x instead of python3 according to
-# your installation where x is your python's minor version
+# your installation where x is your python's minor version. It can happen that you have to
+# use the "py" command instead of the python/python3 commands.
 python3 -m venv .\venv
 
 # Activate the virtual environment
@@ -75,7 +76,7 @@ jupyter notebook
 On Linux/MacOS:
 ```bash
 # Move into the created/cloned directory
-cd path/to/cloned/repo/PygameModelling22
+cd path/to/cloned/repo/PygameModelling23
 
 # Activate the virtual environment
 source ./venv/bin/activate
@@ -87,7 +88,7 @@ jupyter notebook
 On Windows:
 ```bash
 # Move into the newly created/cloned directory
-cd path\to\cloned\repo\PygameModelling22
+cd path\to\cloned\repo\PygameModelling23
 
 # Activate the virtual environment
 .\venv\Scripts\activate.bat
@@ -95,5 +96,5 @@ cd path\to\cloned\repo\PygameModelling22
 # start jupyter notebook
 jupyter notebook
 ```
-2. From the user interface of jupyter open the provided notebook `PygameModellingCourseTrack22.ipynb`.
+2. From the user interface of jupyter open the provided notebook `PygameModellingCourseTrack23.ipynb`.
 3. Follow the instructions in the notebook and enjoy the workshop!
