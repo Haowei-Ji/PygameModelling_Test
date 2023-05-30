@@ -6,10 +6,42 @@ from math import atan2
 
 import pygame
 import numpy as np
-from pygmodw22 import support
+from pygmodw23 import support
 
+class AgentBase(pygame.sprite.Sprite):
+    """
+    Generalized agent class with very basic functionalities shared across all children
+    """
+    def __init__(self, id, radius, position, orientation, env_size, color, window_pad):
+        """
+        Initalization method of main agent class of the simulations
 
-class Agent(pygame.sprite.Sprite):
+        :param id: ID of agent (int)
+        :param radius: radius of the agent in pixels
+        :param position: position of the agent bounding upper left corner in env as (x, y)
+        :param orientation: absolute orientation of the agent (0 is facing to the right)
+        :param env_size: environment size available for agents as (width, height)
+        :param color: color of the agent as (R, G, B)
+        :param window_pad: padding of the environment in simulation window in pixels
+        """
+        # Initializing supercalss (Pygame Sprite)
+        super().__init__()
+        self.id = id
+        self.radius = radius
+        self.position = np.array(position, dtype=np.float64)
+        self.orientation = orientation
+        self.orig_color = color
+        self.color = self.orig_color
+        self.selected_color = support.LIGHT_BLUE
+
+        # Environment related parameters
+        self.WIDTH = env_size[0]  # env width
+        self.HEIGHT = env_size[1]  # env height
+        self.window_pad = window_pad
+        self.boundaries_x = [self.window_pad, self.window_pad + self.WIDTH]
+        self.boundaries_y = [self.window_pad, self.window_pad + self.HEIGHT]
+
+class Agent(AgentBase):
     """
     Agent class that includes all private parameters of the agents and all methods necessary to move in the environment
     and to make decisions.
@@ -28,7 +60,7 @@ class Agent(pygame.sprite.Sprite):
         :param window_pad: padding of the environment in simulation window in pixels
         """
         # Initializing supercalss (Pygame Sprite)
-        super().__init__()
+        super().__init__(id, radius, position, orientation, env_size, color, window_pad)
 
         # Interaction strength
         # Attraction
@@ -59,13 +91,6 @@ class Agent(pygame.sprite.Sprite):
         # infinite: agents continue moving in both x and y direction and teleported to other side
         self.boundary = "infinite"
 
-        self.id = id
-        self.radius = radius
-        self.position = np.array(position, dtype=np.float64)
-        self.orientation = orientation
-        self.orig_color = color
-        self.color = self.orig_color
-        self.selected_color = support.LIGHT_BLUE
         self.show_stats = False
         self.change_color_with_orientation = False
 
@@ -75,13 +100,6 @@ class Agent(pygame.sprite.Sprite):
 
         # Interaction
         self.is_moved_with_cursor = 0
-
-        # Environment related parameters
-        self.WIDTH = env_size[0]  # env width
-        self.HEIGHT = env_size[1]  # env height
-        self.window_pad = window_pad
-        self.boundaries_x = [self.window_pad, self.window_pad + self.WIDTH]
-        self.boundaries_y = [self.window_pad, self.window_pad + self.HEIGHT]
 
         # Initial Visualization of agent
         self.image = pygame.Surface([radius * 2, radius * 2])

@@ -9,7 +9,7 @@ setup(
     url='https://github.com/mezdahun/PygameModelling22',
     maintainer='David Mezey @ SCIoI',
     packages=find_packages(exclude=['tests']),
-    package_data={'pygmodw22': ['*.txt']},
+    package_data={'pygmodw23': ['*.txt']},
     python_requires=">=3.7",
     install_requires=[
         'pygame',

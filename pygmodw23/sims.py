@@ -2,8 +2,8 @@ import pygame
 import numpy as np
 import sys
 
-from pygmodw22 import support
-from pygmodw22.agent import Agent
+from pygmodw23 import support
+from pygmodw23.agent import Agent
 
 from math import atan2
 import os
