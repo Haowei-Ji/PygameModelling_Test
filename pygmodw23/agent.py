@@ -8,10 +8,12 @@ import pygame
 import numpy as np
 from pygmodw23 import support
 
+
 class AgentBase(pygame.sprite.Sprite):
     """
     Generalized agent class with very basic functionalities shared across all children
     """
+
     def __init__(self, id, radius, position, orientation, env_size, color, window_pad):
         """
         Initalization method of main agent class of the simulations
@@ -49,6 +51,11 @@ class AgentBase(pygame.sprite.Sprite):
         # Non-initialisable private attributes
         self.velocity = 1  # agent absolute velocity
         self.v_max = 1  # maximum velocity of agent
+
+        # Time step
+        self.dt = 0.05
+        self.dv = 0
+        self.dtheta = 0
 
         # Interaction
         self.is_moved_with_cursor = 0
@@ -207,9 +214,98 @@ class AgentBase(pygame.sprite.Sprite):
             self.velocity = self.v_max
 
     def update(self, agents):
+        """
+        main update method of the agent. This method is called in every timestep to calculate the new state/position
+        of the agent and visualize it in the environment
+        :param agents: a list of all other agents in the environment.
+        """
+        if not self.is_moved_with_cursor:  # we freeze agents when we move them
+            # # updating agent's state variables according to calculated vel and theta
+            self.orientation += self.dt * self.dtheta
+            self.prove_orientation()  # bounding orientation into 0 and 2pi
+            self.velocity += self.dt * self.dv
+            self.prove_velocity()  # possibly bounding velocity of agent
+
+            # updating agent's position
+            self.position[0] += self.velocity * np.cos(self.orientation)
+            self.position[1] -= self.velocity * np.sin(self.orientation)
+
+            # boundary conditions if applicable
+            self.reflect_from_walls(self.boundary)
+
+        # updating agent visualization
+        self.draw_update()
+
+
+class AgentBrownian(AgentBase):
+    """
+    Agent class realizing simple Brownian particle model.
+    """
+
+    def __init__(self, id, radius, position, orientation, env_size, color, window_pad,
+                 noise_type="normal", noise_params=(0, 1), v_max=1):
+        """
+        Initalization method of main agent class of the simulations
+
+        Base parameters:
+
+        :param id: ID of agent (int)
+        :param radius: radius of the agent in pixels
+        :param position: position of the agent bounding upper left corner in env as (x, y)
+        :param orientation: absolute orientation of the agent (0 is facing to the right)
+        :param env_size: environment size available for agents as (width, height)
+        :param color: color of the agent as (R, G, B)
+        :param window_pad: padding of the environment in simulation window in pixels
+
+        Specialized parameters for Brownian model:
+
+        :param noise_type: type of noise to be used for Brownian motion. Can be "normal" or "uniform"
+        :param noise_params: parameters of the noise distribution as (mean, std) for normal and (min, max) for uniform
+        :param v_max: maximum velocity of the agent
+        """
+        # Initializing supercalss (Base Agent)
+        super().__init__(id, radius, position, orientation, env_size, color, window_pad)
+
+        # Setting up Brownian motion parameters
+        self.dtheta = 0
+        self.noise_type = noise_type
+        self.noise_params = noise_params
+
+        self.v_max = v_max
+
+    def update_forces(self, agents):
         """Update rule for a single agent. This method is called by the environment to update the agent state.
-        In the base version this is a placeholder and we will override it in specific agent classes."""
-        pass  # placeholder
+        Calculating movement of the agent according to Brownian motion model and updating the agent state."""
+        # Defining callback function for noise according to noise type
+        if self.noise_type == "normal":
+            noise = np.random.normal(self.noise_params[0], self.noise_params[1])
+        elif self.noise_type == "uniform":
+            noise = np.random.uniform(self.noise_params[0], self.noise_params[1])
+        # Calculating new orientation
+        self.dtheta = noise
+
+    def update(self, agents):
+        """
+        main update method of the agent. This method is called in every timestep to calculate the new state/position
+        of the agent and visualize it in the environment
+        :param agents: a list of all other agents in the environment.
+        """
+        if not self.is_moved_with_cursor:  # we freeze agents when we move them
+            # # updating agent's state variables according to calculated vel and theta
+            self.orientation += self.dtheta
+            self.prove_orientation()  # bounding orientation into 0 and 2pi
+            # fixed velocity on maximum speed
+            self.velocity = self.v_max
+
+            # updating agent's position
+            self.position[0] += self.velocity * np.cos(self.orientation)
+            self.position[1] -= self.velocity * np.sin(self.orientation)
+
+            # boundary conditions if applicable
+            self.reflect_from_walls(self.boundary)
+
+        # updating agent visualization
+        self.draw_update()
 
 
 class Agent(AgentBase):
@@ -255,9 +351,6 @@ class Agent(AgentBase):
 
         # Noise
         self.noise_sig = 0.1
-
-        # Time step
-        self.dt = 0.05
 
     def update_forces(self, agents):
         """Updateing overall social forces on agent according to velocity and distance of others"""
@@ -327,27 +420,3 @@ class Agent(AgentBase):
 
         self.dtheta = theta
         self.dv = vel
-
-    def update(self, agents):
-        """
-        main update method of the agent. This method is called in every timestep to calculate the new state/position
-        of the agent and visualize it in the environment
-        :param agents: a list of all other agents in the environment.
-        """
-
-        if not self.is_moved_with_cursor:  # we freeze agents when we move them
-            # # updating agent's state variables according to calculated vel and theta
-            self.orientation += self.dt * self.dtheta
-            self.prove_orientation()  # bounding orientation into 0 and 2pi
-            self.velocity += self.dt * self.dv
-            self.prove_velocity()  # possibly bounding velocity of agent
-
-            # updating agent's position
-            self.position[0] += self.velocity * np.cos(self.orientation)
-            self.position[1] -= self.velocity * np.sin(self.orientation)
-
-            # boundary conditions if applicable
-            self.reflect_from_walls(self.boundary)
-
-        # updating agent visualization
-        self.draw_update()

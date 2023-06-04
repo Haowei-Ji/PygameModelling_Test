@@ -3,18 +3,20 @@ import numpy as np
 import sys
 
 from pygmodw23 import support
-from pygmodw23.agent import Agent
+from pygmodw23.agent import Agent, AgentBrownian
 
 from math import atan2
 import os
 from datetime import datetime
+from matplotlib import cm as colmaps
 
 root_abm_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
+WHITE = (255, 255, 255)
 
 class Simulation:
     def __init__(self, N=10, T=1000, width=500, height=500, framerate=25, window_pad=30, with_visualization=True,
-                 agent_radius=10, physical_obstacle_avoidance=False):
+                 agent_radius=10, physical_obstacle_avoidance=False, agent_type="3zones"):
         """
         Initializing the main simulation instance
         :param N: number of agents
@@ -27,6 +29,9 @@ class Simulation:
             that we can use a higher/maximal framerate.
         :param agent_radius: radius of the agents
         :param physical_obstacle_avoidance: obstacle avoidance based on pygame sprite collision groups
+        :param agent_type: type of agent to be used.
+                            3zones: zonal flocking with 3 zones
+                            brownian: simple brownian particles
         """
         # Arena parameters
         self.change_agent_colors = False
@@ -46,7 +51,13 @@ class Simulation:
         self.physical_collision_avoidance = physical_obstacle_avoidance
 
         # Agent parameters
+        self.agent_type = agent_type
         self.agent_radii = agent_radius
+
+        # Showing path history
+        self.memory_length = 0  # by default we don't save trails
+        self.ori_memory = None
+        self.pos_memory = None
 
         # Initializing pygame
         pygame.init()
@@ -102,6 +113,50 @@ class Simulation:
                     self.screen.blit(text, (agent.position[0] + 2 * agent.radius,
                                             agent.position[1] + 2 * agent.radius + i * (font_size + spacing)))
 
+
+    def save_ori_pos_history(self):
+        """Saving orientation and position history of agents to visualize paths"""
+        if self.ori_memory is None:
+            self.ori_memory = np.zeros((len(self.agents), self.memory_length))
+            self.pos_memory = np.zeros((len(self.agents), 2, self.memory_length))
+        try:
+            self.ori_memory = np.roll(self.ori_memory, 1, axis=-1)
+            self.pos_memory = np.roll(self.pos_memory, 1, axis=-1)
+            self.ori_memory[:, 0] = np.array([ag.orientation for ag in self.agents])
+            self.pos_memory[:, 0, 0] = np.array([ag.position[0]+ag.radius for ag in self.agents])
+            self.pos_memory[:, 1, 0] = np.array([ag.position[1]+ag.radius for ag in self.agents])
+        except:
+            self.ori_memory = None
+            self.pos_memory = None
+
+    def draw_agent_paths(self):
+        if self.ori_memory is not None:
+            path_length = self.memory_length
+            cmap = colmaps.get_cmap('jet')
+            transparency = 0.5
+            transparency = int(transparency * 255)
+            big_colors = cmap(self.ori_memory / (2 * np.pi)) * 255
+            # setting alpha
+            surface = pygame.Surface((self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad))
+            surface.fill(WHITE)
+            surface.set_colorkey(WHITE)
+            surface.set_alpha(255)
+            try:
+                for ai, agent in enumerate(self.agents):
+                    subsurface = pygame.Surface((self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad))
+                    subsurface.fill(WHITE)
+                    subsurface.set_colorkey(WHITE)
+                    subsurface.set_alpha(transparency)
+                    for t in range(2, path_length, 2):
+                        point2 = self.pos_memory[ai, :, t]
+                        color = big_colors[ai, t]
+                        # pygame.draw.line(surface1, color, point1, point2, 4)
+                        pygame.draw.circle(subsurface, color, point2, max(2, int(self.agent_radii / 3)))
+                    surface.blit(subsurface, (0, 0))
+                self.screen.blit(surface, (0, 0))
+            except IndexError as e:
+                pass
+
     def agent_agent_collision(self, agent1, agent2):
         """collision protocol called on any agent that has been collided with another one
         :param agent1, agent2: agents that collided"""
@@ -135,16 +190,31 @@ class Simulation:
 
     def add_new_agent(self, id, x, y, orient):
         """Adding a single new agent into agent sprites"""
-        agent = Agent(
-            id=id,
-            radius=self.agent_radii,
-            position=(x, y),
-            orientation=orient,
-            env_size=(self.WIDTH, self.HEIGHT),
-            color=support.BLUE,
-            window_pad=self.window_pad
-        )
-        self.agents.add(agent)
+        if self.agent_type == "3zones":
+            agent = Agent(
+                id=id,
+                radius=self.agent_radii,
+                position=(x, y),
+                orientation=orient,
+                env_size=(self.WIDTH, self.HEIGHT),
+                color=support.BLUE,
+                window_pad=self.window_pad
+            )
+            self.agents.add(agent)
+        elif self.agent_type == "brownian":
+            agent = AgentBrownian(
+                id=id,
+                radius=self.agent_radii,
+                position=(x, y),
+                orientation=orient,
+                env_size=(self.WIDTH, self.HEIGHT),
+                color=support.BLUE,
+                window_pad=self.window_pad,
+                v_max=1.5,
+                noise_type="uniform",
+                noise_params=[-0.5 * np.pi, 0.5 * np.pi]
+            )
+            self.agents.add(agent)
 
     def create_agents(self):
         """Creating agents according to how the simulation class was initialized"""
@@ -237,26 +307,30 @@ class Simulation:
         self.draw_walls()
         if self.show_zones:
             self.draw_agent_zones()
+        if self.memory_length > 0:
+            self.save_ori_pos_history()
+            self.draw_agent_paths()
         self.agents.draw(self.screen)
         self.draw_framerate()
         self.draw_agent_stats()
 
     def draw_agent_zones(self):
         for agent in self.agents:
-            image = pygame.Surface([self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad])
-            image.fill(support.BACKGROUND)
-            image.set_colorkey(support.BACKGROUND)
-            image.set_alpha(30)
-            if agent.s_att != 0:
-                cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_att
-                pygame.draw.circle(image, support.GREEN, (cx, cy), r, width=3)
-            if agent.s_rep != 0:
-                cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_rep
-                pygame.draw.circle(image, support.RED, (cx, cy), r, width=3)
-            if agent.s_alg != 0:
-                cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_alg
-                pygame.draw.circle(image, support.YELLOW, (cx, cy), r, width=3)
-            self.screen.blit(image, (0, 0))
+            if isinstance(agent, Agent):
+                image = pygame.Surface([self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad])
+                image.fill(support.BACKGROUND)
+                image.set_colorkey(support.BACKGROUND)
+                image.set_alpha(30)
+                if agent.s_att != 0:
+                    cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_att
+                    pygame.draw.circle(image, support.GREEN, (cx, cy), r, width=3)
+                if agent.s_rep != 0:
+                    cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_rep
+                    pygame.draw.circle(image, support.RED, (cx, cy), r, width=3)
+                if agent.s_alg != 0:
+                    cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_alg
+                    pygame.draw.circle(image, support.YELLOW, (cx, cy), r, width=3)
+                self.screen.blit(image, (0, 0))
 
     def start(self):
 
