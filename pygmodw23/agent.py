@@ -41,58 +41,10 @@ class AgentBase(pygame.sprite.Sprite):
         self.boundaries_x = [self.window_pad, self.window_pad + self.WIDTH]
         self.boundaries_y = [self.window_pad, self.window_pad + self.HEIGHT]
 
-class Agent(AgentBase):
-    """
-    Agent class that includes all private parameters of the agents and all methods necessary to move in the environment
-    and to make decisions.
-    """
-
-    def __init__(self, id, radius, position, orientation, env_size, color, window_pad):
-        """
-        Initalization method of main agent class of the simulations
-
-        :param id: ID of agent (int)
-        :param radius: radius of the agent in pixels
-        :param position: position of the agent bounding upper left corner in env as (x, y)
-        :param orientation: absolute orientation of the agent (0 is facing to the right)
-        :param env_size: environment size available for agents as (width, height)
-        :param color: color of the agent as (R, G, B)
-        :param window_pad: padding of the environment in simulation window in pixels
-        """
-        # Initializing supercalss (Pygame Sprite)
-        super().__init__(id, radius, position, orientation, env_size, color, window_pad)
-
-        # Interaction strength
-        # Attraction
-        self.s_att = 0.02
-        # Repulsion
-        self.s_rep = 5
-        # Alignment
-        self.s_alg = 8
-
-        # Interaction ranges (Zones)
-        # Attraction
-        self.steepness_att = -0.5
-        self.r_att = 250
-        # Repulsion
-        self.steepness_rep = -0.5
-        self.r_rep = 50
-        # Alignment
-        self.steepness_alg = -0.5
-        self.r_alg = 150
-
-        # Noise
-        self.noise_sig = 0.1
-
-        self.dt = 0.05
-
         # Boundary conditions
         # bounce_back: agents bouncing back from walls as particles
-        # infinite: agents continue moving in both x and y direction and teleported to other side
+        # infinite: agents continue moving in both x and y direction and teleported to other side (torus)
         self.boundary = "infinite"
-
-        self.show_stats = False
-        self.change_color_with_orientation = False
 
         # Non-initialisable private attributes
         self.velocity = 1  # agent absolute velocity
@@ -100,6 +52,10 @@ class Agent(AgentBase):
 
         # Interaction
         self.is_moved_with_cursor = 0
+
+        # Visualization parameters
+        self.show_stats = False
+        self.change_color_with_orientation = False
 
         # Initial Visualization of agent
         self.image = pygame.Surface([radius * 2, radius * 2])
@@ -117,6 +73,10 @@ class Agent(AgentBase):
         self.rect.y = self.position[1]
         self.mask = pygame.mask.from_surface(self.image)
 
+    def change_color(self):
+        """Changing color of agent according to the behavioral mode the agent is currently in."""
+        self.color = support.calculate_color(self.orientation, self.velocity)
+
     def move_with_mouse(self, mouse, left_state, right_state):
         """Moving the agent with the mouse cursor, and rotating"""
         if self.rect.collidepoint(mouse):
@@ -133,103 +93,6 @@ class Agent(AgentBase):
             self.draw_update()
         else:
             self.is_moved_with_cursor = 0
-
-    def update_forces(self, agents):
-        """Updateing overall social forces on agent according to velocity and distance of others"""
-        # CALCULATING change in velocity and orientation in the current timestep
-        # vel, theta = support.random_walk()
-        # center point
-        v1_s_x = self.position[0] + self.radius
-        v1_s_y = self.position[1] + self.radius
-
-        # point on agent's edge circle according to it's orientation
-        v1_e_x = self.position[0] + (1 + np.cos(self.orientation)) * self.radius
-        v1_e_y = self.position[1] + (1 - np.sin(self.orientation)) * self.radius
-
-        # vector between center and edge according to orientation
-        v1_x = v1_e_x - v1_s_x
-        v1_y = v1_e_y - v1_s_y
-
-        heading_vec = np.array([v1_x, v1_y])
-
-        # CALCULATING attraction force with all agents:
-        vec_attr_total = np.zeros(2)
-        vec_rep_total = np.zeros(2)
-        vec_alg_total = np.zeros(2)
-        for ag in agents:
-            if ag.id != self.id:
-                # Distance between focal agent and given pair
-                ag_pos_x = ag.position[0] + ag.radius
-                ag_pos_y = ag.position[1] + ag.radius
-                s_pos_x = self.position[0] + self.radius
-                s_pos_y = self.position[1] + self.radius
-                if self.boundary == "bounce_back":
-                    distvec = np.array([ag_pos_x - s_pos_x, ag_pos_y - s_pos_y])
-                elif self.boundary == "infinite":
-                    distvec = support.distance_infinite(np.array([s_pos_x, s_pos_y]),
-                                                        np.array([ag_pos_x, ag_pos_y]))
-
-                # Difference between velocity between given agents
-                s_vel = np.array([self.velocity * np.cos(self.orientation), - self.velocity * np.sin(self.orientation)])
-                ag_vel = np.array([ag.velocity * np.cos(ag.orientation), - ag.velocity * np.sin(ag.orientation)])
-                dvel = ag_vel - s_vel
-
-                # Calculating interaction forces
-                vec_attr_total += support.CalcSingleAttForce(self.r_att, self.steepness_att, distvec)
-                vec_rep_total += support.CalcSingleRepForce(self.r_rep, self.steepness_rep, distvec)
-                vec_alg_total += support.CalcSingleAlgForce(self.r_alg, self.steepness_alg, distvec, dvel)
-
-        force_total = self.s_att * vec_attr_total - self.s_rep * vec_rep_total + self.s_alg * vec_alg_total
-
-        vel = self.v_max * np.linalg.norm(force_total)
-        closed_angle = support.angle_between(heading_vec, force_total)
-        closed_angle = (closed_angle % (2 * np.pi))
-        # at this point closed angle between 0 and 2pi, but we need it between -pi and pi
-        # we also need to take our orientation convention into consideration to recalculate
-        # theta=0 is pointing to the right
-        if not np.isnan(closed_angle):
-            if 0 < closed_angle < np.pi:
-                theta = -closed_angle
-            else:
-                theta = 2 * np.pi - closed_angle
-        else:
-            theta = 0
-
-        # Adding directional noise
-        if self.noise_sig > 0.0:
-            noiseP = np.random.normal(0.0, self.noise_sig, size=1)
-            theta += noiseP[0]
-
-        self.dtheta = theta
-        self.dv = vel
-
-    def update(self, agents):
-        """
-        main update method of the agent. This method is called in every timestep to calculate the new state/position
-        of the agent and visualize it in the environment
-        :param agents: a list of all other agents in the environment.
-        """
-
-        if not self.is_moved_with_cursor:  # we freeze agents when we move them
-            # # updating agent's state variables according to calculated vel and theta
-            self.orientation += self.dt * self.dtheta
-            self.prove_orientation()  # bounding orientation into 0 and 2pi
-            self.velocity += self.dt * self.dv
-            self.prove_velocity()  # possibly bounding velocity of agent
-
-            # updating agent's position
-            self.position[0] += self.velocity * np.cos(self.orientation)
-            self.position[1] -= self.velocity * np.sin(self.orientation)
-
-            # boundary conditions if applicable
-            self.reflect_from_walls(self.boundary)
-
-        # updating agent visualization
-        self.draw_update()
-
-    def change_color(self):
-        """Changing color of agent according to the behavioral mode the agent is currently in."""
-        self.color = support.calculate_color(self.orientation, self.velocity)
 
     def draw_update(self):
         """
@@ -342,3 +205,149 @@ class Agent(AgentBase):
         if np.abs(self.velocity) > self.v_max:
             # stopping agent if too fast during exploration
             self.velocity = self.v_max
+
+    def update(self, agents):
+        """Update rule for a single agent. This method is called by the environment to update the agent state.
+        In the base version this is a placeholder and we will override it in specific agent classes."""
+        pass  # placeholder
+
+
+class Agent(AgentBase):
+    """
+    Agent class that includes all private parameters of the agents and all methods necessary to move in the environment
+    and to make decisions.
+    """
+
+    def __init__(self, id, radius, position, orientation, env_size, color, window_pad):
+        """
+        Initalization method of main agent class of the simulations
+
+        :param id: ID of agent (int)
+        :param radius: radius of the agent in pixels
+        :param position: position of the agent bounding upper left corner in env as (x, y)
+        :param orientation: absolute orientation of the agent (0 is facing to the right)
+        :param env_size: environment size available for agents as (width, height)
+        :param color: color of the agent as (R, G, B)
+        :param window_pad: padding of the environment in simulation window in pixels
+        """
+        # Initializing supercalss (Base Agent)
+        super().__init__(id, radius, position, orientation, env_size, color, window_pad)
+
+        # Specifying parameters for this special 3-zone agent
+        # Interaction strength
+        # Attraction
+        self.s_att = 0.02
+        # Repulsion
+        self.s_rep = 5
+        # Alignment
+        self.s_alg = 8
+
+        # Interaction ranges (Zones)
+        # Attraction
+        self.steepness_att = -0.5
+        self.r_att = 250
+        # Repulsion
+        self.steepness_rep = -0.5
+        self.r_rep = 50
+        # Alignment
+        self.steepness_alg = -0.5
+        self.r_alg = 150
+
+        # Noise
+        self.noise_sig = 0.1
+
+        # Time step
+        self.dt = 0.05
+
+    def update_forces(self, agents):
+        """Updateing overall social forces on agent according to velocity and distance of others"""
+        # CALCULATING change in velocity and orientation in the current timestep
+        # vel, theta = support.random_walk()
+        # center point
+        v1_s_x = self.position[0] + self.radius
+        v1_s_y = self.position[1] + self.radius
+
+        # point on agent's edge circle according to it's orientation
+        v1_e_x = self.position[0] + (1 + np.cos(self.orientation)) * self.radius
+        v1_e_y = self.position[1] + (1 - np.sin(self.orientation)) * self.radius
+
+        # vector between center and edge according to orientation
+        v1_x = v1_e_x - v1_s_x
+        v1_y = v1_e_y - v1_s_y
+
+        heading_vec = np.array([v1_x, v1_y])
+
+        # CALCULATING attraction force with all agents:
+        vec_attr_total = np.zeros(2)
+        vec_rep_total = np.zeros(2)
+        vec_alg_total = np.zeros(2)
+        for ag in agents:
+            if ag.id != self.id:
+                # Distance between focal agent and given pair
+                ag_pos_x = ag.position[0] + ag.radius
+                ag_pos_y = ag.position[1] + ag.radius
+                s_pos_x = self.position[0] + self.radius
+                s_pos_y = self.position[1] + self.radius
+                if self.boundary == "bounce_back":
+                    distvec = np.array([ag_pos_x - s_pos_x, ag_pos_y - s_pos_y])
+                elif self.boundary == "infinite":
+                    distvec = support.distance_infinite(np.array([s_pos_x, s_pos_y]),
+                                                        np.array([ag_pos_x, ag_pos_y]))
+
+                # Difference between velocity between given agents
+                s_vel = np.array([self.velocity * np.cos(self.orientation), - self.velocity * np.sin(self.orientation)])
+                ag_vel = np.array([ag.velocity * np.cos(ag.orientation), - ag.velocity * np.sin(ag.orientation)])
+                dvel = ag_vel - s_vel
+
+                # Calculating interaction forces
+                vec_attr_total += support.CalcSingleAttForce(self.r_att, self.steepness_att, distvec)
+                vec_rep_total += support.CalcSingleRepForce(self.r_rep, self.steepness_rep, distvec)
+                vec_alg_total += support.CalcSingleAlgForce(self.r_alg, self.steepness_alg, distvec, dvel)
+
+        force_total = self.s_att * vec_attr_total - self.s_rep * vec_rep_total + self.s_alg * vec_alg_total
+
+        vel = self.v_max * np.linalg.norm(force_total)
+        closed_angle = support.angle_between(heading_vec, force_total)
+        closed_angle = (closed_angle % (2 * np.pi))
+        # at this point closed angle between 0 and 2pi, but we need it between -pi and pi
+        # we also need to take our orientation convention into consideration to recalculate
+        # theta=0 is pointing to the right
+        if not np.isnan(closed_angle):
+            if 0 < closed_angle < np.pi:
+                theta = -closed_angle
+            else:
+                theta = 2 * np.pi - closed_angle
+        else:
+            theta = 0
+
+        # Adding directional noise
+        if self.noise_sig > 0.0:
+            noiseP = np.random.normal(0.0, self.noise_sig, size=1)
+            theta += noiseP[0]
+
+        self.dtheta = theta
+        self.dv = vel
+
+    def update(self, agents):
+        """
+        main update method of the agent. This method is called in every timestep to calculate the new state/position
+        of the agent and visualize it in the environment
+        :param agents: a list of all other agents in the environment.
+        """
+
+        if not self.is_moved_with_cursor:  # we freeze agents when we move them
+            # # updating agent's state variables according to calculated vel and theta
+            self.orientation += self.dt * self.dtheta
+            self.prove_orientation()  # bounding orientation into 0 and 2pi
+            self.velocity += self.dt * self.dv
+            self.prove_velocity()  # possibly bounding velocity of agent
+
+            # updating agent's position
+            self.position[0] += self.velocity * np.cos(self.orientation)
+            self.position[1] -= self.velocity * np.sin(self.orientation)
+
+            # boundary conditions if applicable
+            self.reflect_from_walls(self.boundary)
+
+        # updating agent visualization
+        self.draw_update()
