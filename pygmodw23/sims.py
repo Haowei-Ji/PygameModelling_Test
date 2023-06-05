@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 from pygmodw23 import support
-from pygmodw23.agent import Agent, AgentBrownian
+from pygmodw23.agent import Agent, AgentBrownian, AgentBrownianSelfPropelled
 
 from math import atan2
 import os
@@ -13,6 +13,7 @@ from matplotlib import cm as colmaps
 root_abm_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 WHITE = (255, 255, 255)
+
 
 class Simulation:
     def __init__(self, N=10, T=1000, width=500, height=500, framerate=25, window_pad=30, with_visualization=True,
@@ -201,8 +202,8 @@ class Simulation:
                 window_pad=self.window_pad
             )
             self.agents.add(agent)
-        elif self.agent_type == "brownian":
-            agent = AgentBrownian(
+        elif self.agent_type == "brownian-selfpropelled":
+            agent = AgentBrownianSelfPropelled(
                 id=id,
                 radius=self.agent_radii,
                 position=(x, y),
@@ -213,6 +214,20 @@ class Simulation:
                 v_max=1.5,
                 noise_type="uniform",
                 noise_params=[-0.5 * np.pi, 0.5 * np.pi]
+            )
+            self.agents.add(agent)
+        elif self.agent_type == "brownian":
+            agent = AgentBrownian(
+                id=id,
+                radius=self.agent_radii,
+                position=(x, y),
+                orientation=orient,
+                env_size=(self.WIDTH, self.HEIGHT),
+                color=support.BLUE,
+                window_pad=self.window_pad,
+                noise_params_v=[0, 2],
+                noise_params_th=[0, 0.5 * np.pi],
+                gamma=0.1
             )
             self.agents.add(agent)
 
