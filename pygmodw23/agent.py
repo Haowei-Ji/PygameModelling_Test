@@ -501,3 +501,109 @@ class Agent(AgentBase):
 
         self.dtheta = theta
         self.dv = vel
+
+
+class AgentSIR(AgentBrownianSelfPropelled):
+    def __init__(self, id, radius, position, orientation, env_size, color, window_pad,
+                 noise_type="normal", noise_params=(0, 1), v_max=1,
+                 infection_prob=0.5, recovery_prob=0.2, death_prob=0.2, infection_radius=30):
+        """
+        Initalization method of main agent class of the simulations
+
+        Base parameters:
+
+        :param id: ID of agent (int)
+        :param radius: radius of the agent in pixels
+        :param position: position of the agent bounding upper left corner in env as (x, y)
+        :param orientation: absolute orientation of the agent (0 is facing to the right)
+        :param env_size: environment size available for agents as (width, height)
+        :param color: color of the agent as (R, G, B)
+        :param window_pad: padding of the environment in simulation window in pixels
+
+        Specialized parameters for Brownian model:
+
+        :param noise_type: type of noise to be used for Brownian motion. Can be "normal" or "uniform"
+        :param noise_params: parameters of the noise distribution as (mean, std) for normal and (min, max) for uniform
+        :param v_max: maximum velocity of the agent
+
+        Specialized parameters for SIR model:
+
+        :param infection_prob: probability of infection when in contact with infected agent
+        :param recovery_prob: probability of recovery when infected
+        :param death_prob: probability of death when infected
+        :param infection_radius: radius of infection
+        """
+        # Initializing superclass (Base Agent)
+        super().__init__(id, radius, position, orientation, env_size, color, window_pad, noise_type, noise_params,
+                         v_max)
+        self.state = "S"
+        self.infection_prob = infection_prob
+        self.death_prob = death_prob
+        self.recovery_prob = recovery_prob
+        self.infection_radius = infection_radius
+
+    def change_color(self):
+        """Changing color of agent according to the agent's state"""
+        if self.state == "S":
+            self.orig_color = support.BLUE
+        elif self.state == "I":
+            self.orig_color = support.RED
+        elif self.state == "R":
+            self.orig_color = support.GREEN
+        elif self.state == "D":
+            self.orig_color = support.BLACK
+
+    def update_forces(self, agents):
+        """Overriding update force to include state transitions of SIR model next to brownian motion"""
+        # Updating motion forces
+        super().update_forces(agents)
+        # Updating state
+        # getting infectious agents in contact with focal agent
+        if self.state == "S":
+            infectious_agents = [ag for ag in agents if ag.state == "I" and ag.id != self.id and self.is_in_contact(ag)]
+            for infag in infectious_agents:
+                if np.random.rand() < self.infection_prob:
+                    self.state = "I"
+                    break
+        elif self.state == "I":
+            if np.random.rand() < self.death_prob:
+                self.state = "D"
+            elif np.random.rand() < self.recovery_prob:
+                self.state = "R"
+        if self.state == "D":
+            self.v_max = 0
+            self.dtheta = 0
+
+    def is_in_contact(self, ag):
+        """Checking if agent is in contact with another agent"""
+        dist = np.linalg.norm(np.array(self.position) - np.array(ag.position))
+        if dist < self.radius + self.infection_radius:
+            return True
+        else:
+            return False
+
+    def update(self, agents):
+        """
+        main update method of the agent. This method is called in every timestep to calculate the new state/position
+        of the agent and visualize it in the environment
+        :param agents: a list of all other agents in the environment.
+        """
+        if not self.is_moved_with_cursor:  # we freeze agents when we move them
+            # # updating agent's state variables according to calculated vel and theta
+            self.orientation += self.dtheta
+            self.prove_orientation()  # bounding orientation into 0 and 2pi
+            # fixed velocity on maximum speed
+            self.velocity = self.v_max
+
+            # updating agent's position
+            self.vx = self.velocity * np.cos(self.orientation)
+            self.vy = self.velocity * np.sin(self.orientation)
+            self.position[0] += self.vx
+            self.position[1] -= self.vy
+
+            # boundary conditions if applicable
+            self.reflect_from_walls(self.boundary)
+
+        # updating agent visualization
+        self.change_color()
+        self.draw_update()
