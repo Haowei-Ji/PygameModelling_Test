@@ -114,21 +114,36 @@ class Simulation:
                     self.screen.blit(text, (agent.position[0] + 2 * agent.radius,
                                             agent.position[1] + 2 * agent.radius + i * (font_size + spacing)))
 
-
-    def save_ori_pos_history(self):
+    def save_data(self):
         """Saving orientation and position history of agents to visualize paths"""
         if self.ori_memory is None:
             self.ori_memory = np.zeros((len(self.agents), self.memory_length))
             self.pos_memory = np.zeros((len(self.agents), 2, self.memory_length))
+            self.vx_memory = np.zeros((len(self.agents), self.memory_length))
+            self.vy_memory = np.zeros((len(self.agents), self.memory_length))
+            self.iid_memory = np.zeros((len(self.agents), len(self.agents), self.memory_length))
         try:
             self.ori_memory = np.roll(self.ori_memory, 1, axis=-1)
             self.pos_memory = np.roll(self.pos_memory, 1, axis=-1)
+            self.vx_memory = np.roll(self.vx_memory, 1, axis=-1)
+            self.vy_memory = np.roll(self.vy_memory, 1, axis=-1)
+            self.iid_memory = np.roll(self.iid_memory, 1, axis=-1)
             self.ori_memory[:, 0] = np.array([ag.orientation for ag in self.agents])
-            self.pos_memory[:, 0, 0] = np.array([ag.position[0]+ag.radius for ag in self.agents])
-            self.pos_memory[:, 1, 0] = np.array([ag.position[1]+ag.radius for ag in self.agents])
+            self.pos_memory[:, 0, 0] = np.array([ag.position[0] + ag.radius for ag in self.agents])
+            self.pos_memory[:, 1, 0] = np.array([ag.position[1] + ag.radius for ag in self.agents])
+            self.vx_memory[:, 0] = np.array([ag.vx for ag in self.agents])
+            self.vy_memory[:, 0] = np.array([ag.vy for ag in self.agents])
+            self.iid_memory[:, :, 0] = self.iid_matrix()
         except:
             self.ori_memory = None
             self.pos_memory = None
+            self.vx_memory = None
+            self.vy_memory = None
+            self.iid_memory = None
+
+    def iid_matrix(self):
+        """Returns a matrix of inter-agent distances"""
+        return np.array([[np.linalg.norm(np.array(ag1.position) - np.array(ag2.position)) for ag1 in self.agents] for ag2 in self.agents])
 
     def draw_agent_paths(self):
         if self.ori_memory is not None:
@@ -323,7 +338,7 @@ class Simulation:
         if self.show_zones:
             self.draw_agent_zones()
         if self.memory_length > 0:
-            self.save_ori_pos_history()
+            self.save_data()
             self.draw_agent_paths()
         self.agents.draw(self.screen)
         self.draw_framerate()
