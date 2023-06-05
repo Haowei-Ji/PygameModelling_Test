@@ -3,10 +3,10 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(
-    name='PyGame Modelling Workshop 2022',
+    name='PyGame Modelling Workshop 2023',
     description='Workshop material for hands-on demonstration of using pygame in modelling collective behavior using agent-based models.',
     version='1.0.0',
-    url='https://github.com/mezdahun/PygameModelling22',
+    url='https://github.com/scioip34/PygameModelling23',
     maintainer='David Mezey @ SCIoI',
     packages=find_packages(exclude=['tests']),
     package_data={'pygmodw23': ['*.txt']},
@@ -17,7 +17,7 @@ setup(
         'scipy',
         'matplotlib',
         'opencv-python',
-        'zarr'
+        'h5py'
     ],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
