@@ -551,7 +551,7 @@ class AgentSIR(AgentBrownianSelfPropelled):
         elif self.state == "R":
             self.orig_color = support.GREEN
         elif self.state == "D":
-            self.orig_color = support.BLACK
+            self.orig_color = support.GREY
 
     def update_forces(self, agents):
         """Overriding update force to include state transitions of SIR model next to brownian motion"""

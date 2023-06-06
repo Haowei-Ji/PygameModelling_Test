@@ -51,14 +51,25 @@ class Simulation:
         self.show_zones = False
         self.physical_collision_avoidance = physical_obstacle_avoidance
 
+        # SIR model
+        self.stop_when_all_recovered = False
+
         # Agent parameters
         self.agent_type = agent_type
         self.agent_radii = agent_radius
 
-        # Showing path history
-        self.memory_length = 0  # by default we don't save trails
+        # Showing path history and sving data
+        self.show_agent_trails = False  # by default we don't show trails
+        self.memory_length = 0   # by default we don't save data
+
+        # Initializing placeholders for data structures
         self.ori_memory = None
         self.pos_memory = None
+        self.vx_memory = None
+        self.vy_memory = None
+        if self.agent_type == "SIR-brownian-selfpropelled":
+            self.agent_states = None
+
 
         # Initializing pygame
         pygame.init()
@@ -121,25 +132,41 @@ class Simulation:
             self.pos_memory = np.zeros((len(self.agents), 2, self.memory_length))
             self.vx_memory = np.zeros((len(self.agents), self.memory_length))
             self.vy_memory = np.zeros((len(self.agents), self.memory_length))
-            self.iid_memory = np.zeros((len(self.agents), len(self.agents), self.memory_length))
+            if self.agent_type == "SIR-brownian-selfpropelled":
+                self.agent_states = np.zeros((len(self.agents), self.memory_length))
         try:
             self.ori_memory = np.roll(self.ori_memory, 1, axis=-1)
             self.pos_memory = np.roll(self.pos_memory, 1, axis=-1)
             self.vx_memory = np.roll(self.vx_memory, 1, axis=-1)
             self.vy_memory = np.roll(self.vy_memory, 1, axis=-1)
-            self.iid_memory = np.roll(self.iid_memory, 1, axis=-1)
+            if self.agent_type == "SIR-brownian-selfpropelled":
+                self.agent_states = np.roll(self.agent_states, 1, axis=-1)
             self.ori_memory[:, 0] = np.array([ag.orientation for ag in self.agents])
             self.pos_memory[:, 0, 0] = np.array([ag.position[0] + ag.radius for ag in self.agents])
             self.pos_memory[:, 1, 0] = np.array([ag.position[1] + ag.radius for ag in self.agents])
             self.vx_memory[:, 0] = np.array([ag.vx for ag in self.agents])
             self.vy_memory[:, 0] = np.array([ag.vy for ag in self.agents])
-            self.iid_memory[:, :, 0] = self.iid_matrix()
+            if self.agent_type == "SIR-brownian-selfpropelled":
+                self.agent_states[:, 0] = np.array([self.state_to_int(ag.state) for ag in self.agents])
         except:
             self.ori_memory = None
             self.pos_memory = None
             self.vx_memory = None
             self.vy_memory = None
-            self.iid_memory = None
+            self.agent_states = None
+
+    def state_to_int(self, state):
+        """Converts agent state to integer"""
+        if state == "S":
+            return 1
+        elif state == "I":
+            return 2
+        elif state == "R":
+            return 3
+        elif state == "D":
+            return -1
+        else:
+            raise Exception("Unknown state")
 
     def iid_matrix(self):
         """Returns a matrix of inter-agent distances"""
@@ -355,8 +382,7 @@ class Simulation:
         self.draw_walls()
         if self.show_zones:
             self.draw_agent_zones()
-        if self.memory_length > 0:
-            self.save_data()
+        if self.show_agent_trails and self.memory_length>0:
             self.draw_agent_paths()
         self.agents.draw(self.screen)
         self.draw_framerate()
@@ -379,6 +405,16 @@ class Simulation:
                     cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.r_alg
                     pygame.draw.circle(image, support.YELLOW, (cx, cy), r, width=3)
                 self.screen.blit(image, (0, 0))
+            elif isinstance(agent, AgentSIR):
+                if agent.state == "I":
+                    image = pygame.Surface([self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad])
+                    image.fill(support.BACKGROUND)
+                    image.set_colorkey(support.BACKGROUND)
+                    image.set_alpha(30)
+                    cx, cy, r = agent.position[0] + agent.radius, agent.position[1] + agent.radius, agent.infection_radius
+                    pygame.draw.circle(image, support.LIGHT_RED, (cx, cy), r)
+                    self.screen.blit(image, (0, 0))
+
 
     def start(self):
 
@@ -421,6 +457,10 @@ class Simulation:
                 # move to next simulation timestep
                 self.t += 1
 
+            # Saving data to memory
+            if self.memory_length > 0:
+                self.save_data()
+
             # Draw environment and agents
             if self.with_visualization:
                 self.draw_frame()
@@ -431,6 +471,12 @@ class Simulation:
             #     print(f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')} t={self.t}")
             #     print(f"Simulation FPS: {self.clock.get_fps()}")
             self.clock.tick(self.framerate)
+            if self.agent_type == "SIR-brownian-selfpropelled" and self.stop_when_all_recovered:
+                # stop simulations if all agents are recovered or dead
+                states = [ag.state for ag in self.agents]
+                if states.count("I") == 0:
+                    print("No more infected agents left!")
+                    break
 
         end_time = datetime.now()
         print(f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')} Total simulation time: ",
