@@ -20,7 +20,7 @@ To use the provided code base you will need the following:
 5. **Clone this repo:** Open the terminal and use the following command to clone the repo 
   
 ```bash
-git clone https://github.com/mezdahun/PygameModelling23.git
+git clone https://github.com/scioip34/PygameModelling23.git
 ```
   
 6. **Create/activate new virtual environment**: We highly recommend using a virtual environment for the workshop so that you don't have version mismatches with other projects. We recommend using [venv](https://docs.python.org/3/library/venv.html) and we suppose you are using venv in the instructions. If you decide to use another virtual environment (such as pipenv or conda) or not to use any, some differences may show up during the installation.
