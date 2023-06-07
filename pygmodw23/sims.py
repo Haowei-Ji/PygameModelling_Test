@@ -35,6 +35,7 @@ class Simulation:
                             brownian: simple brownian particles
         """
         # Arena parameters
+        self.save_agent_data = False
         self.change_agent_colors = False
         self.WIDTH = width
         self.HEIGHT = height
@@ -127,33 +128,34 @@ class Simulation:
 
     def save_data(self):
         """Saving orientation and position history of agents to visualize paths"""
-        if self.ori_memory is None:
-            self.ori_memory = np.zeros((len(self.agents), self.memory_length))
-            self.pos_memory = np.zeros((len(self.agents), 2, self.memory_length))
-            self.vx_memory = np.zeros((len(self.agents), self.memory_length))
-            self.vy_memory = np.zeros((len(self.agents), self.memory_length))
-            if self.agent_type == "SIR-brownian-selfpropelled":
-                self.agent_states = np.zeros((len(self.agents), self.memory_length))
-        try:
-            self.ori_memory = np.roll(self.ori_memory, 1, axis=-1)
-            self.pos_memory = np.roll(self.pos_memory, 1, axis=-1)
-            self.vx_memory = np.roll(self.vx_memory, 1, axis=-1)
-            self.vy_memory = np.roll(self.vy_memory, 1, axis=-1)
-            if self.agent_type == "SIR-brownian-selfpropelled":
-                self.agent_states = np.roll(self.agent_states, 1, axis=-1)
-            self.ori_memory[:, 0] = np.array([ag.orientation for ag in self.agents])
-            self.pos_memory[:, 0, 0] = np.array([ag.position[0] + ag.radius for ag in self.agents])
-            self.pos_memory[:, 1, 0] = np.array([ag.position[1] + ag.radius for ag in self.agents])
-            self.vx_memory[:, 0] = np.array([ag.vx for ag in self.agents])
-            self.vy_memory[:, 0] = np.array([ag.vy for ag in self.agents])
-            if self.agent_type == "SIR-brownian-selfpropelled":
-                self.agent_states[:, 0] = np.array([self.state_to_int(ag.state) for ag in self.agents])
-        except:
-            self.ori_memory = None
-            self.pos_memory = None
-            self.vx_memory = None
-            self.vy_memory = None
-            self.agent_states = None
+        if self.save_agent_data:
+            if self.ori_memory is None:
+                self.ori_memory = np.zeros((len(self.agents), self.memory_length))
+                self.pos_memory = np.zeros((len(self.agents), 2, self.memory_length))
+                self.vx_memory = np.zeros((len(self.agents), self.memory_length))
+                self.vy_memory = np.zeros((len(self.agents), self.memory_length))
+                if self.agent_type == "SIR-brownian-selfpropelled":
+                    self.agent_states = np.zeros((len(self.agents), self.memory_length))
+            try:
+                self.ori_memory = np.roll(self.ori_memory, 1, axis=-1)
+                self.pos_memory = np.roll(self.pos_memory, 1, axis=-1)
+                self.vx_memory = np.roll(self.vx_memory, 1, axis=-1)
+                self.vy_memory = np.roll(self.vy_memory, 1, axis=-1)
+                if self.agent_type == "SIR-brownian-selfpropelled":
+                    self.agent_states = np.roll(self.agent_states, 1, axis=-1)
+                self.ori_memory[:, 0] = np.array([ag.orientation for ag in self.agents])
+                self.pos_memory[:, 0, 0] = np.array([ag.position[0] + ag.radius for ag in self.agents])
+                self.pos_memory[:, 1, 0] = np.array([ag.position[1] + ag.radius for ag in self.agents])
+                self.vx_memory[:, 0] = np.array([ag.vx for ag in self.agents])
+                self.vy_memory[:, 0] = np.array([ag.vy for ag in self.agents])
+                if self.agent_type == "SIR-brownian-selfpropelled":
+                    self.agent_states[:, 0] = np.array([self.state_to_int(ag.state) for ag in self.agents])
+            except:
+                self.ori_memory = None
+                self.pos_memory = None
+                self.vx_memory = None
+                self.vy_memory = None
+                self.agent_states = None
 
     def state_to_int(self, state):
         """Converts agent state to integer"""
@@ -178,7 +180,7 @@ class Simulation:
             cmap = colmaps.get_cmap('jet')
             transparency = 0.5
             transparency = int(transparency * 255)
-            big_colors = cmap(self.ori_memory / (2 * np.pi)) * 255
+            big_colors = cmap(1-(self.ori_memory / (2 * np.pi))) * 255
             # setting alpha
             surface = pygame.Surface((self.WIDTH + self.window_pad, self.HEIGHT + self.window_pad))
             surface.fill(WHITE)
