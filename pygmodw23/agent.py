@@ -73,6 +73,7 @@ class AgentBase(pygame.sprite.Sprite):
         pygame.draw.circle(
             self.image, color, (radius, radius), radius
         )
+
         #test for ellipse
         pygame.draw.ellipse(self.image,color, [radius-radius *2 , radius - radius, radius, radius*2])
 
