@@ -49,13 +49,13 @@ class AgentBase(pygame.sprite.Sprite):
         self.boundary = "infinite"
 
         # Non-initialisable private attributes
-        self.velocity = 1  # agent absolute velocity
+        self.velocity = 1.1  # agent absolute velocity
         self.v_max = 1  # maximum velocity of agent
         self.vx = 0  # vlocity in x direction
         self.vy = 0  # velocity in y direction
 
         # Time step
-        self.dt = 0.05
+        self.dt = 0.06
         self.dv = 0
         self.dtheta = 0
 
