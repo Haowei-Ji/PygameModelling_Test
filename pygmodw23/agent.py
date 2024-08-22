@@ -73,6 +73,8 @@ class AgentBase(pygame.sprite.Sprite):
         pygame.draw.circle(
             self.image, color, (radius, radius), radius
         )
+        #test for ellipse
+        pygame.draw.ellipse(self.image,color, [radius-radius *2 , radius - radius, radius, radius*2])
 
         # Showing agent orientation with a line towards agent orientation
         pygame.draw.line(self.image, support.BACKGROUND, (radius, radius),
@@ -131,6 +133,8 @@ class AgentBase(pygame.sprite.Sprite):
                 pygame.draw.circle(
                     self.image, self.color, (self.radius, self.radius), self.radius
                 )
+
+
         except:
             self.color[3] = 0
             pygame.draw.circle(
